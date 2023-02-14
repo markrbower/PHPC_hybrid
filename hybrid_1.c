@@ -43,8 +43,8 @@ int main(int argc, char *argv[]) {
 	   	cout<<"   rank  "<< "    sum     "<<"  "<<"time in sec"<<endl;
 	   }
 
-	   MPI_Barrier( MPI_COMM_WORLD );
-	   cout << rank << "        " << sumA << "       " << time << endl;
+	  MPI_Barrier( MPI_COMM_WORLD );
+	  cout << rank << "        " << sumA << "       " << time << endl;
 
 	  MPI_Finalize();
 }
