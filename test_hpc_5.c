@@ -29,27 +29,23 @@ int main(int argc, char *argv[]) {
   void* va = (void*)malloc(NSIZE*sizeof(double));
   void* vb = (void*)malloc(NSIZE*sizeof(double));
 
-  #pragma acc parallel loop present( a[0:NSIZE], b[0:NSIZE], c[0:NSIZE] )
-  for (int i=0; i<NSIZE; i++) {
-	a[i] = 1.0;
-       	b[i] = 2.0;
-  }
-
   MPI_Status status;
+  MPI_Request request;
 
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &np);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Get_processor_name(processor_name, &namelen);
 
-  MPI_Barrier(MPI_COMM_WORLD);
-
   if ( rank == 0 ) {
-  	printf("Starting the clock!\n");
-  	cpu_timer_start(&start_all);
+  	#pragma acc parallel loop present( a[0:NSIZE], b[0:NSIZE], c[0:NSIZE] )
+  	for (int i=0; i<NSIZE; i++) {
+		a[i] = 1.0;
+       		b[i] = 2.0;
+  	}
   }
-
   printf( "Running on %d processors.\n", np );
+  cpu_timer_start(&start_all);
   for (int k=0; k<ntimes; k++ ) {
        if ( rank == 0 ) { // Manager
 		int index,i;
@@ -59,37 +55,36 @@ int main(int argc, char *argv[]) {
 			for (i = 1; i < np - 1; i++) {
 	                	index = i * elements_per_process;
   
-       	        		MPI_Send(&elements_per_process,
+       	        		MPI_Isend(&elements_per_process,
                         		1, MPI_INT, i, 0,
-                        		MPI_COMM_WORLD);
-                		MPI_Send(&a[index],
+                        		MPI_COMM_WORLD, &request);
+                		MPI_Isend(&a[index],
                         		elements_per_process,
                         		MPI_INT, i, 0,
-                        		MPI_COMM_WORLD);
-                		MPI_Send(&b[index],
+                        		MPI_COMM_WORLD, &request);
+                		MPI_Isend(&b[index],
                         		elements_per_process,
                         		MPI_INT, i, 0,
-                        		MPI_COMM_WORLD);
+                        		MPI_COMM_WORLD, &request);
             		}
 			// send remaining elements to last processor
             		index = i * elements_per_process;
             		int elements_left = NSIZE - index;
   
-            		MPI_Send(&elements_left,
+            		MPI_Isend(&elements_left,
                      		1, MPI_INT,
                      		i, 0,
-                     		MPI_COMM_WORLD);
-            		MPI_Send(&a[index],
+                     		MPI_COMM_WORLD, &request);
+            		MPI_Isend(&a[index],
                      		elements_left,
                      		MPI_DOUBLE, i, 0,
-                     		MPI_COMM_WORLD);
-            		MPI_Send(&b[index],
+                     		MPI_COMM_WORLD, &request);
+            		MPI_Isend(&b[index],
                      		elements_left,
                      		MPI_DOUBLE, i, 0,
-                     		MPI_COMM_WORLD);
+                     		MPI_COMM_WORLD, &request);
 		} // np > 0	
 		// master process add its own sub array
-//		printf("M\n");
 		sumAll = 0.0;
        		cpu_timer_start(&tstart);
 		#pragma acc parallel loop gang device_type(acc_device_nvidia) vector_length(256)
@@ -101,14 +96,12 @@ int main(int argc, char *argv[]) {
         	// collects partial sums from other processes
 		int tmp[2];
         	for (i = 1; i < np; i++) {
-//			printf( "Manager receiving %d.\n", i );
             		MPI_Recv(&tmp, 2, MPI_INT,
                      		MPI_ANY_SOURCE, 0,
                      		MPI_COMM_WORLD,
                      		&status);
             		sumAll += tmp[0];
 			time_sum += (double) tmp[1]/1E6;
-//			printf( "%f\n", time_sum );
         	}
         	// prints the final sum of array
 //        	printf("Sum of array is : %f\n", sumAll);
@@ -165,10 +158,6 @@ int main(int argc, char *argv[]) {
   free(b);
   free(c);
 
-  free(va);
-  free(vb);
-
-  MPI_Barrier(MPI_COMM_WORLD);
   MPI_Finalize();
   return(0);
 }

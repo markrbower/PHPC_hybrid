@@ -2,12 +2,12 @@
 #include <sys/time.h>
 #include "timer.h"
 
-#define NSIZE 80000000
+#define NSIZE 200000000
 static double a[NSIZE], b[NSIZE], c[NSIZE];
 
 int main(int argc, char *argv[]) {
   int ntimes=16;
-  int sumAll=0;
+  double sumAll=0.0;
   double scalar = 3.0, time_sum = 0.0;
   struct timespec tstart;
 
@@ -18,6 +18,7 @@ int main(int argc, char *argv[]) {
 
   cpu_timer_start(&tstart);
   for (int k=0; k<ntimes; k++){
+       sumAll = 0.0;
        for (int i=0; i<NSIZE; i++){
            c[i] = a[i] + scalar*b[i];
 	   sumAll = sumAll + c[i];

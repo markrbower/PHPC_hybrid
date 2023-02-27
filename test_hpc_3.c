@@ -9,7 +9,7 @@
 #include <time.h>
 #include "timer.h"
 
-#define NSIZE 80000000
+#define NSIZE 200000000
 
 int main(int argc, char *argv[]) {
   int ntimes=16;
@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
   double* restrict b = (double*)malloc(NSIZE * sizeof(double));
   double* restrict c = (double*)malloc(NSIZE * sizeof(double));
 
-//  omp_set_num_threads(4);
+  omp_set_num_threads(4);
 
   #pragma acc parallel loop present( a[0:NSIZE], b[0:NSIZE], c[0:NSIZE] )
   for (int i=0; i<NSIZE; i++) {
@@ -37,11 +37,10 @@ int main(int argc, char *argv[]) {
            c[i] = a[i] + scalar*b[i];
 	   sumAll += c[i];
        }
-       c[2] = c[1];
-//       printf("Sum is %f.\n", sumAll );
   }
   time_sum = cpu_timer_stop(tstart);
 
+  printf("Sum is %f.\n", sumAll );
   printf("Average runtime for stream triad loop is %lf msecs\n", time_sum/ntimes);
 
 }
