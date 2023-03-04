@@ -27,7 +27,6 @@ int main(int argc, char ** argv)
     int nbr_lanes = np * NUM_THREADS;
     int sum[nbr_lanes][CBLK] = {0};
 
-    MPI_Barrier(MPI_COMM_WORLD);
     if ( pid == 0 ) {
         #pragma omp master
         if ( provided != MPI_THREAD_FUNNELED ) {
@@ -40,6 +39,7 @@ int main(int argc, char ** argv)
 		a[i] = 1;
 	}
     }
+    MPI_Bcast( a, NSIZE, MPI_INT, 0, MPI_COMM_WORLD ); 
     omp_set_num_threads( NUM_THREADS );
     start_time = omp_get_wtime();
     #pragma omp parallel private(thnum,thtotal) // creates the "thread team"
@@ -51,15 +51,14 @@ int main(int argc, char ** argv)
        	thtotal = omp_get_num_threads();
 	//printf( "%d\n", thtotal );
 	int my_nbr = pid * thtotal + thnum;
-	printf( "%d\n", my_nbr );
+	//printf( "%d\n", my_nbr );
 	int elements_per_thread = NSIZE / (nbr_lanes);
 	int istart = my_nbr * elements_per_thread;
 	int iend = (my_nbr+1) * elements_per_thread;
-	#pragma omp for // splits work among the threads in the team
 	for ( int i=istart; i<iend; i++ ) {
-		sum[my_nbr][0] = sum[my_nbr][0] + a[i];
+		sum[my_nbr][0] += a[i];
 	}
-	printf("%d : %d\n", my_nbr, sum[my_nbr][0] );
+//	printf("%d : %d : %d : %d\n", istart, iend, my_nbr, sum[my_nbr][0] );
 //     	  printf("parallel: %d process: %d out of %d threads from proc %d out of %d\n",pid,thnum,thtotal,pid,np);
     }
     if ( pid == 0 ) {
@@ -71,7 +70,6 @@ int main(int argc, char ** argv)
 	    printf( "%d\n", total );
 	    printf( "%f\n", duration );
     }
-    MPI_Barrier(MPI_COMM_WORLD);
 
     MPI_Finalize();
     return 0;

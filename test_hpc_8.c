@@ -104,7 +104,10 @@ int main(int argc, char *argv[]) {
 
   // Compute the total average of all numbers.
   if (rank == 0) {
-  	double total = compute_sum(sub_sums, np);
+        #pragma omp targete teams distribute parallel for reduction(+:sum) collapse(1)
+        for (i = 0; i < num_elements; i++) {
+            sum += a[i] + scalar*b[i];
+        }
   	printf("sum of all elements is %f\n", total );
   	time_all = cpu_timer_stop(tstart);
   	printf("Average runtime for the program is %lf msecs\n", time_all );
